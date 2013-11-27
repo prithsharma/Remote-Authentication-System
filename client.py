@@ -1,10 +1,28 @@
-
-
 import getpass
 import socket
 import sys
 import threading
 from passlib.hash import sha256_crypt
+
+######## Coloured text ###########
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+
+    def disable(self):
+        self.HEADER = ''
+        self.OKBLUE = ''
+        self.OKGREEN = ''
+        self.WARNING = ''
+        self.FAIL = ''
+        self.ENDC = ''
+
+###############################
+
 
 s2 = socket.socket(socket.AF_INET,socket.SOCK_STREAM) #not used
 s3 = socket.socket(socket.AF_INET,socket.SOCK_STREAM) #not used
@@ -87,20 +105,25 @@ print("socket started")
 host_ip = socket.gethostbyname(host)
 s.connect((host,port))	
 
-newt = threading.Thread(target=funct, args=())
-newt.daemon = True
-newt.start()
-
-
-check =0
-check2 = 0
+s.send("connRequest")
+print("Requesting Connection...")
+request = s.recv(1000)
+if request == 'requestDenied':
+	print bcolors.FAIL + "Request denied by server (Access from this IP restricted)" + bcolors.ENDC
+	sys.exit()
+#newt = threading.Thread(target=funct, args=())
+#newt.daemon = True
+#newt.start()
+#
+#
+#check =0
+#check2 = 0
 
 print("\nWelcome!\n1. Register to a server\n2. Login to a server\n3. Close Connection\n")
-	
+loggedIn = 0
 while 1:	#the main loop
 	option = raw_input("\nEnter Option: ");
 	if(option == '1'):
-		#check = 1
 		username = raw_input("username: ")
 		
 		password = getpass.getpass("password: ");
@@ -121,18 +144,32 @@ while 1:	#the main loop
 		print message
 		#print("Registered")
 	elif(option == '2'):
+		if loggedIn == 1:
+			print "You are already logged in with username: " + loggedUser
+			continue
 		username = raw_input("username: ")
 		password = getpass.getpass("password: ");
 		
 		s.send("authenticate\t"+username)
 		print "Logging in..."
-		hash = s.recv(500)
-		if sha256_crypt.verify(password,hash):
-			print "Authentication successful"
-		else:
-			print "Wrond password. Try again"
+		reply = s.recv(500)
+		if reply.split('\n')[0] == 'error':
+			print reply.split('\n')[1]
+		elif reply.split('\n')[0] == 'hash':
+			hash = reply.split('\n')[1]
+			if sha256_crypt.verify(password,hash):
+				s.send("loginSuccess\t"+username)
+				print "Authentication successful"
+				loggedIn = 1
+				loggedUser = username
+			else:
+				s.send("loginFail\t"+username)
+				print "Wrong password. Try again"
 	elif(option == '3'):
-		s.send("close\t")
+		if loggedIn == 1:
+			s.send("close\t"+loggedUser)
+		else:
+			s.send("close\t")
 		closeMsg = s.recv(100)
 		print closeMsg
 		s.close
