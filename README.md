@@ -7,4 +7,5 @@ Install passlib using " pip install passlib "
 
 client.py       - client side script <br/>
 server.py       - server side script <br/>
-restrictIP.conf - configuration file containing IPs to be restricted access to server
+restrictIP.conf - configuration file containing IPs to be restricted access to server <br/>
+users.db        - user database
